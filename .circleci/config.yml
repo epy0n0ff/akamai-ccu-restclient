@@ -1,0 +1,9 @@
+version: 2
+jobs:
+  build:
+    working_directory: ~/akamai-ccu-restclient
+    docker:
+      - image: golang:1.8.3
+    steps:
+      - checkout
+      - run: go test -bench . -benchmem
