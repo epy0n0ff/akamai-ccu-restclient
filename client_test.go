@@ -26,3 +26,20 @@ func TestPurge(t *testing.T) {
 		t.Fatalf("unexpected error: response struct is empty")
 	}
 }
+
+func TestGetQueueLength(t *testing.T) {
+	c, err := NewClient(user, pass)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	ctx := context.Background()
+	res, err := c.GetQueueLength(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if res == nil {
+		t.Fatalf("unexpected error: response struct is empty")
+	}
+}
