@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	baseURL       = "https://api.ccu.akamai.com"
-	purgeEndPoint = "/ccu/v2/queues/default"
+	baseURL  = "https://api.ccu.akamai.com"
+	endpoint = "/ccu/v2/queues/default"
 )
 
 type Client struct {
@@ -40,15 +40,14 @@ func NewClient(basicUser, basicPassword string) (*Client, error) {
 // Purge function does purge request with ARL objects. Not support cpcode type.
 // If successful, this method will return a response that includes progress url and more.
 // If unsuccessful, this will return  an error.
-func (c *Client) Purge(ctx context.Context, objects ...string) (*Response, error) {
+func (c *Client) Purge(ctx context.Context, objects ...string) (*PurgeResponse, error) {
 	purge := PurgeRequest{Objects: objects}
 	body := new(bytes.Buffer)
 	if err := c.encodeBody(body, &purge); err != nil {
 		return nil, err
 	}
 
-	headerOps := map[string]string{"Content-Type": "application/json"}
-	req, err := c.newRequest(ctx, "POST", c.getURL(purgeEndPoint, ""), body, headerOps)
+	req, err := c.newRequest(ctx, "POST", c.getURL(endpoint, ""), body, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -59,12 +58,35 @@ func (c *Client) Purge(ctx context.Context, objects ...string) (*Response, error
 	}
 	defer res.Body.Close()
 
-	var purgeResponse Response
+	var purgeResponse PurgeResponse
 	if err := c.decodeBody(res, &purgeResponse); err != nil {
 		return nil, err
 	}
 
 	return &purgeResponse, nil
+}
+
+// GetQueueLength function get purge request queue length.
+// If successful, this method will return a response that includes queue length.
+// If unsuccessful, this will return  an error.
+func (c *Client) GetQueueLength(ctx context.Context) (*QueueResponse, error) {
+	req, err := c.newRequest(ctx, "GET", c.getURL(endpoint, ""), nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	var queueResponse QueueResponse
+	if err := c.decodeBody(res, &queueResponse); err != nil {
+		return nil, err
+	}
+
+	return &queueResponse, nil
 }
 
 func (c *Client) newRequest(ctx context.Context, method, url string, body io.Reader, headerOps map[string]string) (*http.Request, error) {
@@ -74,6 +96,7 @@ func (c *Client) newRequest(ctx context.Context, method, url string, body io.Rea
 	}
 
 	req.Header.Set("User-Agent", fmt.Sprintf("akamai-ccu-restclient/%s", version))
+	req.Header.Set("Content-Type", "application/json")
 	req.SetBasicAuth(c.basicUser, c.basicPassword)
 
 	for name, value := range headerOps {
