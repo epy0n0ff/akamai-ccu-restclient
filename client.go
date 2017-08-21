@@ -73,6 +73,10 @@ func (c *Client) Purge(ctx context.Context, objects ...string) (*PurgeResponse, 
 	}
 	defer res.Body.Close()
 
+	if res.StatusCode != http.StatusCreated {
+		return nil, fmt.Errorf(res.Status)
+	}
+
 	var purgeResponse PurgeResponse
 	if err := c.decodeBody(res, &purgeResponse); err != nil {
 		return nil, err
@@ -95,6 +99,10 @@ func (c *Client) GetQueueLength(ctx context.Context) (*QueueResponse, error) {
 		return nil, err
 	}
 	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf(res.Status)
+	}
 
 	var queueResponse QueueResponse
 	if err := c.decodeBody(res, &queueResponse); err != nil {
