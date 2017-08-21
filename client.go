@@ -22,18 +22,33 @@ type Client struct {
 	client        *http.Client
 }
 
+type ClientOps struct {
+	baseURL *url.URL
+	client *http.Client
+}
+
 // NewClient function returns akamai ccu rest client
-func NewClient(basicUser, basicPassword string) (*Client, error) {
+func NewClient(basicUser, basicPassword string, ops *ClientOps) (*Client, error) {
+	var client = http.DefaultClient
 	base, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, err
+	}
+
+	if ops != nil {
+		if ops.baseURL != nil {
+			base = ops.baseURL
+		}
+		if ops.client != nil {
+			client = ops.client
+		}
 	}
 
 	return &Client{
 		baseURL:       base,
 		basicUser:     basicUser,
 		basicPassword: basicPassword,
-		client:        http.DefaultClient,
+		client:        client,
 	}, nil
 }
 

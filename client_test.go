@@ -11,7 +11,7 @@ var pass = os.Getenv("AKAMAI_PASSWORD")
 var arl = os.Getenv("TEST_ARL")
 
 func TestPurge(t *testing.T) {
-	c, err := NewClient(user, pass)
+	c, err := NewClient(user, pass, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -28,7 +28,7 @@ func TestPurge(t *testing.T) {
 }
 
 func TestGetQueueLength(t *testing.T) {
-	c, err := NewClient(user, pass)
+	c, err := NewClient(user, pass, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
