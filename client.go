@@ -23,8 +23,8 @@ type Client struct {
 }
 
 type ClientOps struct {
-	baseURL *url.URL
-	client *http.Client
+	BaseURL *url.URL
+	Client  *http.Client
 }
 
 // NewClient function returns akamai ccu rest client
@@ -36,11 +36,11 @@ func NewClient(basicUser, basicPassword string, ops *ClientOps) (*Client, error)
 	}
 
 	if ops != nil {
-		if ops.baseURL != nil {
-			base = ops.baseURL
+		if ops.BaseURL != nil {
+			base = ops.BaseURL
 		}
-		if ops.client != nil {
-			client = ops.client
+		if ops.Client != nil {
+			client = ops.Client
 		}
 	}
 
