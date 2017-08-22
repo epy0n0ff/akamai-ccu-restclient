@@ -6,7 +6,7 @@ type PurgeResponse struct {
 	Detail           string `json:"detail"`
 	EstimatedSeconds int    `json:"estimatedSeconds"`
 	PurgeId          string `json:"purgeId"`
-	ProgressUri      string `json:"progressUuri"`
+	ProgressUri      string `json:"progressUri"`
 	PingAfterSeconds int    `json:"pingAfterSeconds"`
 	SupportId        string `json:"supportId"`
 }
