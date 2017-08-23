@@ -112,6 +112,33 @@ func (c *Client) GetQueueLength(ctx context.Context) (*QueueResponse, error) {
 	return &queueResponse, nil
 }
 
+// GetPurgeStatus function get purge request status.
+// If successful, this method will return a response that includes purge status.
+// If unsuccessful, this will return  an error.
+func (c *Client) GetPurgeStatus(ctx context.Context, progressUri string) (*PurgeStatusResponse, error) {
+	req, err := c.newRequest(ctx, "GET", c.getURL(progressUri, ""), nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf(res.Status)
+	}
+
+	var purgeStatusResponse PurgeStatusResponse
+	if err := c.decodeBody(res, &purgeStatusResponse); err != nil {
+		return nil, err
+	}
+
+	return &purgeStatusResponse, nil
+}
+
 func (c *Client) newRequest(ctx context.Context, method, url string, body io.Reader, headerOps map[string]string) (*http.Request, error) {
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
