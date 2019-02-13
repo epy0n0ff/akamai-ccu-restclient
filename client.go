@@ -7,62 +7,45 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
+
+	"github.com/akamai/AkamaiOPEN-edgegrid-golang/edgegrid"
 )
 
 const (
-	baseURL  = "https://api.ccu.akamai.com"
-	endpoint = "/ccu/v2/queues/default"
+	deleteByURL     = "/ccu/v3/delete/url/"
+	invalidateByURL = "/ccu/v3/invalidate/url/"
 )
 
+const (
+	Staging    Network = "staging"
+	Production Network = "production"
+)
+
+type Network string
+
 type Client struct {
-	baseURL       *url.URL
-	basicUser     string
-	basicPassword string
-	client        *http.Client
+	network Network
+	config  edgegrid.Config
+	client  *http.Client
 }
 
-type ClientOps struct {
-	BaseURL *url.URL
-	Client  *http.Client
-}
-
-// NewClient function returns akamai ccu rest client
-func NewClient(basicUser, basicPassword string, ops *ClientOps) (*Client, error) {
-	var client = http.DefaultClient
-	base, err := url.Parse(baseURL)
-	if err != nil {
-		return nil, err
-	}
-
-	if ops != nil {
-		if ops.BaseURL != nil {
-			base = ops.BaseURL
-		}
-		if ops.Client != nil {
-			client = ops.Client
-		}
-	}
-
+// NewClient function returns akamai ccu v3 rest client
+func NewClient(network Network, config edgegrid.Config) (*Client, error) {
 	return &Client{
-		baseURL:       base,
-		basicUser:     basicUser,
-		basicPassword: basicPassword,
-		client:        client,
+		network: network,
+		config:  config,
+		client:  http.DefaultClient,
 	}, nil
 }
 
-// Purge function does purge request with ARL objects. Not support cpcode type.
-// If successful, this method will return a response that includes progress url and more.
-// If unsuccessful, this will return  an error.
-func (c *Client) Purge(ctx context.Context, objects ...string) (*PurgeResponse, error) {
+func (c *Client) purge(ctx context.Context, path string, objects ...string) (*DeleteResponse, error) {
 	purge := PurgeRequest{Objects: objects}
 	body := new(bytes.Buffer)
 	if err := c.encodeBody(body, &purge); err != nil {
 		return nil, err
 	}
 
-	req, err := c.newRequest(ctx, "POST", c.getURL(endpoint, ""), body, nil)
+	req, err := c.newRequest(ctx, "POST", fmt.Sprintf("https://%s%s%s", c.config.Host, path, c.network), body, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -73,43 +56,54 @@ func (c *Client) Purge(ctx context.Context, objects ...string) (*PurgeResponse, 
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode != http.StatusCreated {
+	switch res.StatusCode {
+	case http.StatusTooManyRequests:
+		var resp RateLimitResponse
+		if err := c.decodeBody(res, &resp); err != nil {
+			return nil, err
+		}
+		return nil, resp
+	case http.StatusCreated:
+		var resp DeleteResponse
+		if err := c.decodeBody(res, &resp); err != nil {
+			return nil, err
+		}
+		return &resp, nil
+	case http.StatusRequestEntityTooLarge:
+		return nil, fmt.Errorf("request entity needed to be under the 50,000 byte limit")
+	default:
 		return nil, fmt.Errorf(res.Status)
 	}
-
-	var purgeResponse PurgeResponse
-	if err := c.decodeBody(res, &purgeResponse); err != nil {
-		return nil, err
-	}
-
-	return &purgeResponse, nil
 }
 
-// GetQueueLength function get purge request queue length.
-// If successful, this method will return a response that includes queue length.
+// Delete function does delete request with ARL objects. Not support cpcode type.
+// If successful, this method will return a response that includes progress estimatedSeconds and more.
 // If unsuccessful, this will return  an error.
-func (c *Client) GetQueueLength(ctx context.Context) (*QueueResponse, error) {
-	req, err := c.newRequest(ctx, "GET", c.getURL(endpoint, ""), nil, nil)
-	if err != nil {
+func (c *Client) Delete(ctx context.Context, objects ...string) (*DeleteResponse, error) {
+	return c.purge(ctx, deleteByURL, objects...)
+}
+
+// Invalidate function does invalidate request with ARL objects. Not support cpcode type.
+// If successful, this method will return a response that includes progress estimatedSeconds and more.
+// If unsuccessful, this will return  an error.
+func (c *Client) Invalidate(ctx context.Context, objects ...string) (*DeleteResponse, error) {
+	return c.purge(ctx, invalidateByURL, objects...)
+}
+
+// ExceededRateLimit function check error type.
+// If exceeded rate limit, this method will return RateLimitResponse,
+// else this will return a raw error.
+func (c *Client) ExceededRateLimit(err error) (*RateLimitResponse, error) {
+	switch err.(type) {
+	case RateLimitResponse:
+		if resp, ok := err.(RateLimitResponse); ok {
+			return &resp, nil
+		}
+
+		return nil, err
+	default:
 		return nil, err
 	}
-
-	res, err := c.client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf(res.Status)
-	}
-
-	var queueResponse QueueResponse
-	if err := c.decodeBody(res, &queueResponse); err != nil {
-		return nil, err
-	}
-
-	return &queueResponse, nil
 }
 
 // GetPurgeStatus function get purge request status.
@@ -147,11 +141,12 @@ func (c *Client) newRequest(ctx context.Context, method, url string, body io.Rea
 
 	req.Header.Set("User-Agent", fmt.Sprintf("akamai-ccu-restclient/%s", version))
 	req.Header.Set("Content-Type", "application/json")
-	req.SetBasicAuth(c.basicUser, c.basicPassword)
 
 	for name, value := range headerOps {
 		req.Header.Set(name, value)
 	}
+
+	req = edgegrid.AddRequestHeader(c.config, req)
 
 	return req.WithContext(ctx), nil
 }
@@ -162,11 +157,4 @@ func (c *Client) decodeBody(resp *http.Response, v interface{}) error {
 
 func (c *Client) encodeBody(writer io.Writer, v interface{}) error {
 	return json.NewEncoder(writer).Encode(v)
-}
-
-func (c *Client) getURL(path, query string) string {
-	u := *c.baseURL
-	u.Path = path
-	u.RawQuery = query
-	return u.String()
 }
