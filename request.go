@@ -1,7 +1,6 @@
 package restclient
 
-// See:https://api.ccu.akamai.com/ccu/v2/docs/
+// See: https://developer.akamai.com/api/core_features/fast_purge/v3.html
 type PurgeRequest struct {
-	//Type string   `json:"omitempty`
 	Objects []string `json:"objects"`
 }
