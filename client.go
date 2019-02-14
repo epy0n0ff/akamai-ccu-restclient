@@ -52,13 +52,18 @@ func (c *Client) purge(ctx context.Context, path string, objects ...string) (*De
 	}
 
 	debug, _ := httputil.DumpRequest(req, true)
-	fmt.Println(string(debug))
+	fmt.Println("request:", string(debug))
+	fmt.Println("body-length:", body.Len())
 
 	res, err := c.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer res.Body.Close()
+
+	debug, _ = httputil.DumpResponse(res, true)
+	fmt.Println("response:", string(debug))
+	fmt.Println("body-length:", body.Len())
 
 	switch res.StatusCode {
 	case http.StatusTooManyRequests:

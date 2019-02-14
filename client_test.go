@@ -1,6 +1,7 @@
 package restclient
 
 import (
+	"bufio"
 	"context"
 	"os"
 	"testing"
@@ -20,7 +21,7 @@ func TestDelete(t *testing.T) {
 		AccessToken:  accessToken,
 		ClientSecret: secret,
 		ClientToken:  clientToken,
-		MaxBody:      1024 * 8,
+		MaxBody:      1024 * 4,
 		Debug:        false,
 	}
 	c, err := NewClient(Staging, conf)
@@ -30,6 +31,45 @@ func TestDelete(t *testing.T) {
 
 	ctx := context.Background()
 	res, err := c.Delete(ctx, arl)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if res == nil {
+		t.Fatalf("unexpected error: response struct is empty")
+	}
+}
+
+func TestDeleteARLS(t *testing.T) {
+	conf := edgegrid.Config{
+		Host:         host,
+		AccessToken:  accessToken,
+		ClientSecret: secret,
+		ClientToken:  clientToken,
+		MaxBody:      1024 * 50,
+		Debug:        false,
+	}
+	c, err := NewClient(Staging, conf)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	arls := make([]string,0)
+	// 500で50kbyte超え
+	fp, err := os.Open("./testdata/400_arls.txt")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	scan := bufio.NewScanner(fp)
+	for scan.Scan() {
+		arls = append(arls, scan.Text())
+	}
+	defer fp.Close()
+
+
+	ctx := context.Background()
+	res, err := c.Delete(ctx, arls...)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
