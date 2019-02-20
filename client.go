@@ -29,12 +29,21 @@ type Client struct {
 	client  *http.Client
 }
 
+type ClientOpts struct {
+	HTTPClient *http.Client
+}
+
 // NewClient function returns akamai ccu v3 rest client
-func NewClient(network Network, config edgegrid.Config) (*Client, error) {
+func NewClient(network Network, config edgegrid.Config, opts *ClientOpts) (*Client, error) {
+	var client = http.DefaultClient
+	if opts != nil {
+		client = opts.HTTPClient
+	}
+
 	return &Client{
 		network: network,
 		config:  config,
-		client:  http.DefaultClient,
+		client:  client,
 	}, nil
 }
 
