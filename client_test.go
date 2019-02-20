@@ -24,7 +24,7 @@ func TestDelete(t *testing.T) {
 		MaxBody:      50000,
 		Debug:        false,
 	}
-	c, err := NewClient(Staging, conf)
+	c, err := NewClient(Staging, conf, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestDeleteARLS(t *testing.T) {
 		MaxBody:      50000,
 		Debug:        false,
 	}
-	c, err := NewClient(Staging, conf)
+	c, err := NewClient(Staging, conf, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
